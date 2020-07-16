@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% load crispy_forms_tags %}
+{% block content %}
+<header class="masthead" style="background-image:None ;">
+    <div class="row" id="truc" >
+        <div class="col-sm-8 offset-sm-2">
+            <form method="POST">
+                {% csrf_token %}
+                <fieldset class="form-group row">
+                    <legend class="border-bottom mb-4 text-muted-homemade">Rejoignez nous</legend>
+                    {{ form|crispy }}
+                </fieldset>
+                <div class="form-group row">
+                    <button class="btn btn-outline-info btn-formular" type="submit">Validez</button>
+                </div>
+            </form>
+            <div class="border-top pt3">
+                <small class="text-muter text-muted-homemade">
+                    Compte existant ? <a class="ml-2"   href="{% url 'login' %}">Connecter</a>
+                </small>
+        
+            </div>
+
+        </div>
+        
+    </div>
+
+</header>
+
+{% endblock content %}

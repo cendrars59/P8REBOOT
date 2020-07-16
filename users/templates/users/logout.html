@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<header class="masthead" style="background-image:None ;">
+    <div class="row" id="truc" >
+        <div class="col-sm-8 offset-sm-2">
+            <h2 class="text-muted-homemade">Déconnexion</h2>
+            <div class="border-top pt3">
+                <small class="text-muter text-muted-homemade">
+                    Vous connectez <a class="ml-2"   href="{% url 'login' %}">Connecter</a>
+                </small>
+        
+            </div>
+
+        </div>
+        
+    </div>
+
+</header>
+
+{% endblock content %}
