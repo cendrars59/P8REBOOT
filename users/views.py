@@ -47,5 +47,5 @@ def listing(request):
         # If page is out of range (e.g. 9999), deliver last page of results.
         products = paginator.page(paginator.num_pages)
 
-    context['products'] = UserProductsSearch.get_products(request)
+    context['products'] = products
     return render(request, 'users/user_search.html', context)

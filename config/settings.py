@@ -29,7 +29,13 @@ if os.environ.get('ENV') == 'PRODUCTION':
 else:
     DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]','clx-p8-pure.herokuapp.com']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '[::1]',
+    'clx-p8-pure.herokuapp.com',
+]
 
 
 # Application definition
@@ -93,7 +99,7 @@ DATABASES = {
         'PASSWORD': 'rivers',
         'HOST': 'localhost',
         'PORT': '5432',
-        'TEST': {'NAME': 'jojo', },
+        'TEST': {'NAME': 'jojo',},
     },
 }
 
