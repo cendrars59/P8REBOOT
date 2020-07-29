@@ -19,7 +19,7 @@ def feed(domain, request, table, conn):
 
     for item in items_list:
         cursor_ck = conn.cursor()
-        cursor_ck.execute(query_for_check,(item['id'],))
+        cursor_ck.execute(query_for_check, (item['id'],))
         ckresult = cursor_ck.fetchall()
         cursor_ck.close()
         # if the code doesn't already exit, we can proceed to insert
