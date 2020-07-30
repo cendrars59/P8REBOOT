@@ -5,7 +5,7 @@ NUTRITION_GRADES = ['a', 'b', 'c', 'd', 'e']
 
 # Create your models here.
 class Category(models.Model):
-    """Class managing any element regarding category object
+    """Class managing any element regarding category object.
 
     Args:
         models ([type]): [description]
@@ -20,7 +20,7 @@ class Category(models.Model):
     active = models.BooleanField(default=True)
 
     def __str__(self):
-        """ Return the name of category instead of technical description
+        """Return the name of category instead of technical description.
 
         Returns:
             String: Name of the category
@@ -29,7 +29,7 @@ class Category(models.Model):
 
 
 class Store(models.Model):
-    """Class managing any element regarding store object
+    """Class managing any element regarding store object.
 
     Args:
         models ([type]): [description]
@@ -44,7 +44,7 @@ class Store(models.Model):
     active = models.BooleanField(default=True)
 
     def __str__(self):
-        """ Return the name of brand instead of technical description
+        """Return the name of brand instead of technical description.
 
         Returns:
             String: Name of the store
@@ -53,7 +53,7 @@ class Store(models.Model):
 
 
 class Brand(models.Model):
-    """Class managing any element regarding brand object
+    """Class managing any element regarding brand object.
 
     Args:
         models ([type]): [description]
@@ -68,7 +68,7 @@ class Brand(models.Model):
     active = models.BooleanField(default=True)
 
     def __str__(self):
-        """ Return the name of brand instead of technical description
+        """Return the name of brand instead of technical description.
 
         Returns:
             String: Name of the brand
@@ -104,7 +104,7 @@ class Product(models.Model):
     brands = models.ManyToManyField(Brand, related_name='products', blank=True)
 
     def __str__(self):
-        """ Return the name of product instead of technical description
+        """Return the name of product instead of technical description.
 
         Returns:
             String: Name of the product
@@ -114,7 +114,7 @@ class Product(models.Model):
     def get_recommanded_products(self):
         """Get the list of recommanded products according the nutrition grade
         of the current product. Only products having same grade or better are
-        part of the results
+        part of the results.
 
         Returns:
             List: List of products

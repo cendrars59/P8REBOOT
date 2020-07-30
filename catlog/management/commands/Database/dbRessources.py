@@ -3,27 +3,23 @@
 # - the connection to the database
 # - the creation of the database and the associated schema
 
-import psycopg2
 import os
+
+import psycopg2
 
 DATABASE_URL = os.environ['DATABASE_URL']
 
 
-
 def connect():
-    """
-     Connect to Postgresql database
-    """
+    """Connect to Postgresql database."""
     conn = None
     try:
         conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        
+
         return conn
 
     except (Exception, psycopg2.Error) as err:
-        
+
         print(err)
     else:
         conn.close()
-
-

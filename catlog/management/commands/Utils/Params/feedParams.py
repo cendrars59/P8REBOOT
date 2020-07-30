@@ -18,6 +18,6 @@ params = {
         'headers': {'User-Agent': 'Cyril-59, Mozilla, Version 1.0'},
     }
 
-    
+
 
 }

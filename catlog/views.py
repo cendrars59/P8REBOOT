@@ -7,8 +7,7 @@ from .models import Product
 
 
 def detail(request, product_id):
-    """Accordingv the requesting, getting the information for
-    a given product.
+    """Accordingv the requesting, getting the information for a given product.
 
     Args:
         request (request): Incoming request

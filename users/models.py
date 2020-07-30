@@ -19,7 +19,7 @@ class Profile(models.Model):
     image = models.ImageField(default='default.jpg', upload_to='profiles_pics')
 
     def __str__(self):
-        """ Return the name of profile instead of technical description
+        """Return the name of profile instead of technical description.
 
         Returns:
             String: Name of the profile
@@ -28,7 +28,7 @@ class Profile(models.Model):
 
 
 class UserProductsSearch(models.Model):
-    """ Class managing the User saved products
+    """Class managing the User saved products.
 
     Args:
         models ([type]): [description]
@@ -49,8 +49,7 @@ class UserProductsSearch(models.Model):
 
     @classmethod
     def get_products(cls, request):
-        """ Function to retrieve the saved products
-        for a given user
+        """Function to retrieve the saved products for a given user.
 
         Args:
             request ([type]): [description]
