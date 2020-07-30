@@ -4,7 +4,7 @@
 # - the creation of the database and the associated schema
 
 import psycopg2
-from os import system
+import os
 
 DATABASE_URL = os.environ['DATABASE_URL']
 
