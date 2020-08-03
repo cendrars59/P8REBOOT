@@ -118,7 +118,6 @@ def search(request):
             )
             == 0
         ):
-            print("Toto")
             UserProductsSearch.objects.create(
                 user=user, mainProduct=product, subProduct=subproduct
             )

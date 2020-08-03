@@ -133,3 +133,5 @@ dmypy.json
 /static/node_modules/
 /static/script/
 /src/
+
+db.sqlite3

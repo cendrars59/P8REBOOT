@@ -1,12 +1,24 @@
-from django.test import TestCase
+from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 
-from catlog.views import search
+from catlog.views import search, detail
 
 
-class TestUrls(TestCase):
+class TestUrls(SimpleTestCase):
 
-    # Checking URL homepage is resolved
     def test_search_url_is_resolved(self):
-        response = self.client.get(reverse('search'))
-        self.assertEquals(response.satus_code, 200)
+        # Issue a GET request.
+        response = self.client.get('/catalogue/search/')
+
+        # Check that the response is 200 OK.
+        self.assertEqual(response.status_code, 200)
+
+    # Checking URL search is resolved
+    def test_search_url_is_resolved(self):
+        url = reverse('catlog:search')
+        self.assertEquals(resolve(url).func, search)
+
+    # Checking URL search is resolved
+    def test_detail_url_is_resolved(self):
+        url = reverse('catlog:detail')
+        self.assertEquals(resolve(url).func, detail)

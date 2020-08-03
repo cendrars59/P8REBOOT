@@ -30,6 +30,8 @@ if os.environ.get('ENV', 'development') == 'production':
 else:
     DEBUG = True
 
+#DEBUG = True
+
 ALLOWED_HOSTS = [
     '.herokuapp.com',
     '.herokuapps.com',
@@ -161,6 +163,6 @@ LOGIN_REDIRECT_URL = 'pages-home'
 LOGIN_URL = 'login'
 
 
-DATABASES['default'] = dj_database_url.config(
-    conn_max_age=600, ssl_require=True)
-django_heroku.settings(locals())
+#DATABASES['default'] = dj_database_url.config(
+#    conn_max_age=600, ssl_require=True)
+#django_heroku.settings(locals())
