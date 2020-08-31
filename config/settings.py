@@ -25,12 +25,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SECRET_KEY', 'Elv!sizNotDe@d')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-if os.environ.get('ENV', 'development') == 'production':
-    DEBUG = False
-else:
-    DEBUG = True
+#if os.environ.get('ENV', 'development') == 'production':
+#    DEBUG = False
+#else:
+#    DEBUG = True
 
-#DEBUG = True
+DEBUG = True
 
 ALLOWED_HOSTS = [
     '.herokuapp.com',
@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'debug_toolbar',
+
 ]
 
 MIDDLEWARE = [
@@ -95,10 +96,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        # on utilise l'adaptateur postgresql
+        # Using postgresql connector
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'pure',  # le nom de notre base de donnees creee precedemment
-        'USER': 'dick',  # attention : remplacez par votre nom d'utilisateur
+        'NAME': 'pure',  # Database name
+        'USER': 'dick',  # Database user name
         'PASSWORD': 'rivers',
         'HOST': 'localhost',
         'PORT': '5432',
@@ -163,6 +164,7 @@ LOGIN_REDIRECT_URL = 'pages-home'
 LOGIN_URL = 'login'
 
 
-DATABASES['default'] = dj_database_url.config(
-    conn_max_age=600, ssl_require=True)
-django_heroku.settings(locals())
+#DATABASES['default'] = dj_database_url.config(
+#    conn_max_age=600, ssl_require=True)
+#django_heroku.settings(locals())
+

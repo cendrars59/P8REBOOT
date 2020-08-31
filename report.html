@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function find_all(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sort_column(elem) {
+    toggle_sort_states(elem);
+    var colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    var key;
+    if (elem.classList.contains('numeric')) {
+        key = key_num;
+    } else if (elem.classList.contains('result')) {
+        key = key_result;
+    } else {
+        key = key_alpha;
+    }
+    sort_table(elem, key(colIndex));
+}
+
+function show_all_extras() {
+    find_all('.col-result').forEach(show_extras);
+}
+
+function hide_all_extras() {
+    find_all('.col-result').forEach(hide_extras);
+}
+
+function show_extras(colresult_elem) {
+    var extras = colresult_elem.parentNode.nextElementSibling;
+    var expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.remove("collapsed");
+    expandcollapse.classList.remove("expander");
+    expandcollapse.classList.add("collapser");
+}
+
+function hide_extras(colresult_elem) {
+    var extras = colresult_elem.parentNode.nextElementSibling;
+    var expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.add("collapsed");
+    expandcollapse.classList.remove("collapser");
+    expandcollapse.classList.add("expander");
+}
+
+function show_filters() {
+    var filter_items = document.getElementsByClassName('filter');
+    for (var i = 0; i < filter_items.length; i++)
+        filter_items[i].hidden = false;
+}
+
+function add_collapse() {
+    // Add links for show/hide all
+    var resulttable = find('table#results-table');
+    var showhideall = document.createElement("p");
+    showhideall.innerHTML = '<a href="javascript:show_all_extras()">Show all details</a> / ' +
+                            '<a href="javascript:hide_all_extras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    find_all('.col-result').forEach(function(elem) {
+        var collapsed = get_query_parameter('collapsed') || 'Passed';
+        var extras = elem.parentNode.nextElementSibling;
+        var expandcollapse = document.createElement("span");
+        if (extras.classList.contains("collapsed")) {
+            expandcollapse.classList.add("expander")
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add("collapsed");
+            expandcollapse.classList.add("expander");
+        } else {
+            expandcollapse.classList.add("collapser");
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener("click", function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains("collapsed")) {
+                show_extras(event.currentTarget);
+            } else {
+                hide_extras(event.currentTarget);
+            }
+        });
+    })
+}
+
+function get_query_parameter(name) {
+    var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () {
+    reset_sort_headers();
+
+    add_collapse();
+
+    show_filters();
+
+    sort_column(find('.initial-sort'));
+
+    find_all('.sortable').forEach(function(elem) {
+        elem.addEventListener("click",
+                              function(event) {
+                                  sort_column(elem);
+                              }, false)
+    });
+
+};
+
+function sort_table(clicked, key_func) {
+    var rows = find_all('.results-table-row');
+    var reversed = !clicked.classList.contains('asc');
+    var sorted_rows = sort(rows, key_func, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    var thead = document.getElementById("results-table-head");
+    document.getElementById('results-table').remove();
+    var parent = document.createElement("table");
+    parent.id = "results-table";
+    parent.appendChild(thead);
+    sorted_rows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName("BODY")[0].appendChild(parent);
+}
+
+function sort(items, key_func, reversed) {
+    var sort_array = items.map(function(item, i) {
+        return [key_func(item), i];
+    });
+
+    sort_array.sort(function(a, b) {
+        var key_a = a[0];
+        var key_b = b[0];
+
+        if (key_a == key_b) return 0;
+
+        if (reversed) {
+            return (key_a < key_b ? 1 : -1);
+        } else {
+            return (key_a > key_b ? 1 : -1);
+        }
+    });
+
+    return sort_array.map(function(item) {
+        var index = item[1];
+        return items[index];
+    });
+}
+
+function key_alpha(col_index) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[col_index].firstChild.data.toLowerCase();
+    };
+}
+
+function key_num(col_index) {
+    return function(elem) {
+        return parseFloat(elem.childNodes[1].childNodes[col_index].firstChild.data);
+    };
+}
+
+function key_result(col_index) {
+    return function(elem) {
+        var strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+                       'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[col_index].firstChild.data);
+    };
+}
+
+function reset_sort_headers() {
+    find_all('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    find_all('.sortable').forEach(function(elem) {
+        var icon = document.createElement("div");
+        icon.className = "sort-icon";
+        icon.textContent = "vvv";
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove("desc", "active");
+        elem.classList.add("asc", "inactive");
+    });
+}
+
+function toggle_sort_states(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        reset_sort_headers();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function is_all_rows_hidden(value) {
+  return value.hidden == false;
+}
+
+function filter_table(elem) {
+    var outcome_att = "data-test-result";
+    var outcome = elem.getAttribute(outcome_att);
+    class_outcome = outcome + " results-table-row";
+    var outcome_rows = document.getElementsByClassName(class_outcome);
+
+    for(var i = 0; i < outcome_rows.length; i++){
+        outcome_rows[i].hidden = !elem.checked;
+    }
+
+    var rows = find_all('.results-table-row').filter(is_all_rows_hidden);
+    var all_rows_hidden = rows.length == 0 ? true : false;
+    var not_found_message = document.getElementById("not-found-message");
+    not_found_message.hidden = !all_rows_hidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 04-Aug-2020 at 23:02:49 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v2.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.8.1", "pytest": "5.4.3"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Linux-4.4.0-19041-Microsoft-x86_64-with-glibc2.29</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"cov": "2.10.0", "django": "3.9.0", "html": "2.1.1", "metadata": "1.10.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.8.2</td></tr></table>
+    <h2>Summary</h2>
+    <p>44 tests ran in 310.66 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="passed">43 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="failed">1 failed</span>, <input checked="true" class="filter" data-test-result="error" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="error">4 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable numeric" col="duration">Duration</th>
+          <th>Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="error results-table-row">
+        <tr>
+          <td class="col-result">Error</td>
+          <td class="col-name">users/tests/test_models.py::UserModelTest::test_email::setup</td>
+          <td class="col-duration">0.05</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">cls = &lt;class &#x27;users.tests.test_models.UserModelTest&#x27;&gt;<br/><br/>    @classmethod<br/>    def setUpTestData(cls):<br/>        # Set up non-modified objects used by all test methods<br/>&gt;       User.objects.create(<br/>            username=&#x27;dummy_user_name&#x27;,<br/>            email=&#x27;Dummy@email.com&#x27;,<br/>            password1=&#x27;dummy_pwd_1&#x27;,<br/>            password2=&#x27;dummy_pwd_1&#x27;,<br/>        )<br/><br/>users/tests/test_models.py:10: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/manager.py:82: in manager_method<br/>    return getattr(self.get_queryset(), name)(*args, **kwargs)<br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/query.py:431: in create<br/>    obj = self.model(**kwargs)<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/><br/>self = &lt;User: dummy_user_name&gt;, args = (), kwargs = {&#x27;password1&#x27;: &#x27;dummy_pwd_1&#x27;, &#x27;password2&#x27;: &#x27;dummy_pwd_1&#x27;}, cls = &lt;class &#x27;django.contrib.auth.models.User&#x27;&gt;, opts = &lt;Options for User&gt;<br/>_setattr = &lt;built-in function setattr&gt;, _DEFERRED = &lt;Deferred field&gt;, fields_iter = &lt;tuple_iterator object at 0x7f7d55253be0&gt;<br/>val = datetime.datetime(2020, 8, 4, 21, 0, 5, 718295, tzinfo=&lt;UTC&gt;), field = &lt;django.db.models.fields.DateTimeField: date_joined&gt;, is_related_object = False<br/>property_names = frozenset({&#x27;is_anonymous&#x27;, &#x27;is_authenticated&#x27;, &#x27;pk&#x27;})<br/><br/>    def __init__(self, *args, **kwargs):<br/>        # Alias some things as locals to avoid repeat global lookups<br/>        cls = self.__class__<br/>        opts = self._meta<br/>        _setattr = setattr<br/>        _DEFERRED = DEFERRED<br/>    <br/>        pre_init.send(sender=cls, args=args, kwargs=kwargs)<br/>    <br/>        # Set up the storage for instance state<br/>        self._state = ModelState()<br/>    <br/>        # There is a rather weird disparity here; if kwargs, it&#x27;s set, then args<br/>        # overrides it. It should be one or the other; don&#x27;t duplicate the work<br/>        # The reason for the kwargs check is that standard iterator passes in by<br/>        # args, and instantiation for iteration is 33% faster.<br/>        if len(args) &gt; len(opts.concrete_fields):<br/>            # Daft, but matches old exception sans the err msg.<br/>            raise IndexError(&quot;Number of args exceeds number of fields&quot;)<br/>    <br/>        if not kwargs:<br/>            fields_iter = iter(opts.concrete_fields)<br/>            # The ordering of the zip calls matter - zip throws StopIteration<br/>            # when an iter throws it. So if the first iter throws it, the second<br/>            # is *not* consumed. We rely on this, so don&#x27;t change the order<br/>            # without changing the logic.<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>        else:<br/>            # Slower, kwargs-ready version.<br/>            fields_iter = iter(opts.fields)<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>                kwargs.pop(field.name, None)<br/>    <br/>        # Now we&#x27;re left with the unprocessed fields that *must* come from<br/>        # keywords, or default.<br/>    <br/>        for field in fields_iter:<br/>            is_related_object = False<br/>            # Virtual field<br/>            if field.attname not in kwargs and field.column is None:<br/>                continue<br/>            if kwargs:<br/>                if isinstance(field.remote_field, ForeignObjectRel):<br/>                    try:<br/>                        # Assume object instance was passed in.<br/>                        rel_obj = kwargs.pop(field.name)<br/>                        is_related_object = True<br/>                    except KeyError:<br/>                        try:<br/>                            # Object instance wasn&#x27;t passed in -- must be an ID.<br/>                            val = kwargs.pop(field.attname)<br/>                        except KeyError:<br/>                            val = field.get_default()<br/>                else:<br/>                    try:<br/>                        val = kwargs.pop(field.attname)<br/>                    except KeyError:<br/>                        # This is done with an exception rather than the<br/>                        # default argument on pop because we don&#x27;t want<br/>                        # get_default() to be evaluated, and then not used.<br/>                        # Refs #12057.<br/>                        val = field.get_default()<br/>            else:<br/>                val = field.get_default()<br/>    <br/>            if is_related_object:<br/>                # If we are passed a related instance, set it using the<br/>                # field.name instead of field.attname (e.g. &quot;user&quot; instead of<br/>                # &quot;user_id&quot;) so that the object gets properly cached (and type<br/>                # checked) by the RelatedObjectDescriptor.<br/>                if rel_obj is not _DEFERRED:<br/>                    _setattr(self, field.name, rel_obj)<br/>            else:<br/>                if val is not _DEFERRED:<br/>                    _setattr(self, field.attname, val)<br/>    <br/>        if kwargs:<br/>            property_names = opts._property_names<br/>            for prop in tuple(kwargs):<br/>                try:<br/>                    # Any remaining kwargs must correspond to properties or<br/>                    # virtual fields.<br/>                    if prop in property_names or opts.get_field(prop):<br/>                        if kwargs[prop] is not _DEFERRED:<br/>                            _setattr(self, prop, kwargs[prop])<br/>                        del kwargs[prop]<br/>                except (AttributeError, FieldDoesNotExist):<br/>                    pass<br/>            for kwarg in kwargs:<br/>&gt;               raise TypeError(&quot;%s() got an unexpected keyword argument &#x27;%s&#x27;&quot; % (cls.__name__, kwarg))<br/><span class="error">E               TypeError: User() got an unexpected keyword argument &#x27;password1&#x27;</span><br/><br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/base.py:500: TypeError<br/></div></td></tr></tbody>
+      <tbody class="error results-table-row">
+        <tr>
+          <td class="col-result">Error</td>
+          <td class="col-name">users/tests/test_models.py::UserModelTest::test_pwd1::setup</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">cls = &lt;class &#x27;users.tests.test_models.UserModelTest&#x27;&gt;<br/><br/>    @classmethod<br/>    def setUpTestData(cls):<br/>        # Set up non-modified objects used by all test methods<br/>&gt;       User.objects.create(<br/>            username=&#x27;dummy_user_name&#x27;,<br/>            email=&#x27;Dummy@email.com&#x27;,<br/>            password1=&#x27;dummy_pwd_1&#x27;,<br/>            password2=&#x27;dummy_pwd_1&#x27;,<br/>        )<br/><br/>users/tests/test_models.py:10: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/manager.py:82: in manager_method<br/>    return getattr(self.get_queryset(), name)(*args, **kwargs)<br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/query.py:431: in create<br/>    obj = self.model(**kwargs)<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/><br/>self = &lt;User: dummy_user_name&gt;, args = (), kwargs = {&#x27;password1&#x27;: &#x27;dummy_pwd_1&#x27;, &#x27;password2&#x27;: &#x27;dummy_pwd_1&#x27;}, cls = &lt;class &#x27;django.contrib.auth.models.User&#x27;&gt;, opts = &lt;Options for User&gt;<br/>_setattr = &lt;built-in function setattr&gt;, _DEFERRED = &lt;Deferred field&gt;, fields_iter = &lt;tuple_iterator object at 0x7f7d55253be0&gt;<br/>val = datetime.datetime(2020, 8, 4, 21, 0, 5, 718295, tzinfo=&lt;UTC&gt;), field = &lt;django.db.models.fields.DateTimeField: date_joined&gt;, is_related_object = False<br/>property_names = frozenset({&#x27;is_anonymous&#x27;, &#x27;is_authenticated&#x27;, &#x27;pk&#x27;})<br/><br/>    def __init__(self, *args, **kwargs):<br/>        # Alias some things as locals to avoid repeat global lookups<br/>        cls = self.__class__<br/>        opts = self._meta<br/>        _setattr = setattr<br/>        _DEFERRED = DEFERRED<br/>    <br/>        pre_init.send(sender=cls, args=args, kwargs=kwargs)<br/>    <br/>        # Set up the storage for instance state<br/>        self._state = ModelState()<br/>    <br/>        # There is a rather weird disparity here; if kwargs, it&#x27;s set, then args<br/>        # overrides it. It should be one or the other; don&#x27;t duplicate the work<br/>        # The reason for the kwargs check is that standard iterator passes in by<br/>        # args, and instantiation for iteration is 33% faster.<br/>        if len(args) &gt; len(opts.concrete_fields):<br/>            # Daft, but matches old exception sans the err msg.<br/>            raise IndexError(&quot;Number of args exceeds number of fields&quot;)<br/>    <br/>        if not kwargs:<br/>            fields_iter = iter(opts.concrete_fields)<br/>            # The ordering of the zip calls matter - zip throws StopIteration<br/>            # when an iter throws it. So if the first iter throws it, the second<br/>            # is *not* consumed. We rely on this, so don&#x27;t change the order<br/>            # without changing the logic.<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>        else:<br/>            # Slower, kwargs-ready version.<br/>            fields_iter = iter(opts.fields)<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>                kwargs.pop(field.name, None)<br/>    <br/>        # Now we&#x27;re left with the unprocessed fields that *must* come from<br/>        # keywords, or default.<br/>    <br/>        for field in fields_iter:<br/>            is_related_object = False<br/>            # Virtual field<br/>            if field.attname not in kwargs and field.column is None:<br/>                continue<br/>            if kwargs:<br/>                if isinstance(field.remote_field, ForeignObjectRel):<br/>                    try:<br/>                        # Assume object instance was passed in.<br/>                        rel_obj = kwargs.pop(field.name)<br/>                        is_related_object = True<br/>                    except KeyError:<br/>                        try:<br/>                            # Object instance wasn&#x27;t passed in -- must be an ID.<br/>                            val = kwargs.pop(field.attname)<br/>                        except KeyError:<br/>                            val = field.get_default()<br/>                else:<br/>                    try:<br/>                        val = kwargs.pop(field.attname)<br/>                    except KeyError:<br/>                        # This is done with an exception rather than the<br/>                        # default argument on pop because we don&#x27;t want<br/>                        # get_default() to be evaluated, and then not used.<br/>                        # Refs #12057.<br/>                        val = field.get_default()<br/>            else:<br/>                val = field.get_default()<br/>    <br/>            if is_related_object:<br/>                # If we are passed a related instance, set it using the<br/>                # field.name instead of field.attname (e.g. &quot;user&quot; instead of<br/>                # &quot;user_id&quot;) so that the object gets properly cached (and type<br/>                # checked) by the RelatedObjectDescriptor.<br/>                if rel_obj is not _DEFERRED:<br/>                    _setattr(self, field.name, rel_obj)<br/>            else:<br/>                if val is not _DEFERRED:<br/>                    _setattr(self, field.attname, val)<br/>    <br/>        if kwargs:<br/>            property_names = opts._property_names<br/>            for prop in tuple(kwargs):<br/>                try:<br/>                    # Any remaining kwargs must correspond to properties or<br/>                    # virtual fields.<br/>                    if prop in property_names or opts.get_field(prop):<br/>                        if kwargs[prop] is not _DEFERRED:<br/>                            _setattr(self, prop, kwargs[prop])<br/>                        del kwargs[prop]<br/>                except (AttributeError, FieldDoesNotExist):<br/>                    pass<br/>            for kwarg in kwargs:<br/>&gt;               raise TypeError(&quot;%s() got an unexpected keyword argument &#x27;%s&#x27;&quot; % (cls.__name__, kwarg))<br/><span class="error">E               TypeError: User() got an unexpected keyword argument &#x27;password1&#x27;</span><br/><br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/base.py:500: TypeError<br/></div></td></tr></tbody>
+      <tbody class="error results-table-row">
+        <tr>
+          <td class="col-result">Error</td>
+          <td class="col-name">users/tests/test_models.py::UserModelTest::test_pwd2::setup</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">cls = &lt;class &#x27;users.tests.test_models.UserModelTest&#x27;&gt;<br/><br/>    @classmethod<br/>    def setUpTestData(cls):<br/>        # Set up non-modified objects used by all test methods<br/>&gt;       User.objects.create(<br/>            username=&#x27;dummy_user_name&#x27;,<br/>            email=&#x27;Dummy@email.com&#x27;,<br/>            password1=&#x27;dummy_pwd_1&#x27;,<br/>            password2=&#x27;dummy_pwd_1&#x27;,<br/>        )<br/><br/>users/tests/test_models.py:10: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/manager.py:82: in manager_method<br/>    return getattr(self.get_queryset(), name)(*args, **kwargs)<br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/query.py:431: in create<br/>    obj = self.model(**kwargs)<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/><br/>self = &lt;User: dummy_user_name&gt;, args = (), kwargs = {&#x27;password1&#x27;: &#x27;dummy_pwd_1&#x27;, &#x27;password2&#x27;: &#x27;dummy_pwd_1&#x27;}, cls = &lt;class &#x27;django.contrib.auth.models.User&#x27;&gt;, opts = &lt;Options for User&gt;<br/>_setattr = &lt;built-in function setattr&gt;, _DEFERRED = &lt;Deferred field&gt;, fields_iter = &lt;tuple_iterator object at 0x7f7d55253be0&gt;<br/>val = datetime.datetime(2020, 8, 4, 21, 0, 5, 718295, tzinfo=&lt;UTC&gt;), field = &lt;django.db.models.fields.DateTimeField: date_joined&gt;, is_related_object = False<br/>property_names = frozenset({&#x27;is_anonymous&#x27;, &#x27;is_authenticated&#x27;, &#x27;pk&#x27;})<br/><br/>    def __init__(self, *args, **kwargs):<br/>        # Alias some things as locals to avoid repeat global lookups<br/>        cls = self.__class__<br/>        opts = self._meta<br/>        _setattr = setattr<br/>        _DEFERRED = DEFERRED<br/>    <br/>        pre_init.send(sender=cls, args=args, kwargs=kwargs)<br/>    <br/>        # Set up the storage for instance state<br/>        self._state = ModelState()<br/>    <br/>        # There is a rather weird disparity here; if kwargs, it&#x27;s set, then args<br/>        # overrides it. It should be one or the other; don&#x27;t duplicate the work<br/>        # The reason for the kwargs check is that standard iterator passes in by<br/>        # args, and instantiation for iteration is 33% faster.<br/>        if len(args) &gt; len(opts.concrete_fields):<br/>            # Daft, but matches old exception sans the err msg.<br/>            raise IndexError(&quot;Number of args exceeds number of fields&quot;)<br/>    <br/>        if not kwargs:<br/>            fields_iter = iter(opts.concrete_fields)<br/>            # The ordering of the zip calls matter - zip throws StopIteration<br/>            # when an iter throws it. So if the first iter throws it, the second<br/>            # is *not* consumed. We rely on this, so don&#x27;t change the order<br/>            # without changing the logic.<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>        else:<br/>            # Slower, kwargs-ready version.<br/>            fields_iter = iter(opts.fields)<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>                kwargs.pop(field.name, None)<br/>    <br/>        # Now we&#x27;re left with the unprocessed fields that *must* come from<br/>        # keywords, or default.<br/>    <br/>        for field in fields_iter:<br/>            is_related_object = False<br/>            # Virtual field<br/>            if field.attname not in kwargs and field.column is None:<br/>                continue<br/>            if kwargs:<br/>                if isinstance(field.remote_field, ForeignObjectRel):<br/>                    try:<br/>                        # Assume object instance was passed in.<br/>                        rel_obj = kwargs.pop(field.name)<br/>                        is_related_object = True<br/>                    except KeyError:<br/>                        try:<br/>                            # Object instance wasn&#x27;t passed in -- must be an ID.<br/>                            val = kwargs.pop(field.attname)<br/>                        except KeyError:<br/>                            val = field.get_default()<br/>                else:<br/>                    try:<br/>                        val = kwargs.pop(field.attname)<br/>                    except KeyError:<br/>                        # This is done with an exception rather than the<br/>                        # default argument on pop because we don&#x27;t want<br/>                        # get_default() to be evaluated, and then not used.<br/>                        # Refs #12057.<br/>                        val = field.get_default()<br/>            else:<br/>                val = field.get_default()<br/>    <br/>            if is_related_object:<br/>                # If we are passed a related instance, set it using the<br/>                # field.name instead of field.attname (e.g. &quot;user&quot; instead of<br/>                # &quot;user_id&quot;) so that the object gets properly cached (and type<br/>                # checked) by the RelatedObjectDescriptor.<br/>                if rel_obj is not _DEFERRED:<br/>                    _setattr(self, field.name, rel_obj)<br/>            else:<br/>                if val is not _DEFERRED:<br/>                    _setattr(self, field.attname, val)<br/>    <br/>        if kwargs:<br/>            property_names = opts._property_names<br/>            for prop in tuple(kwargs):<br/>                try:<br/>                    # Any remaining kwargs must correspond to properties or<br/>                    # virtual fields.<br/>                    if prop in property_names or opts.get_field(prop):<br/>                        if kwargs[prop] is not _DEFERRED:<br/>                            _setattr(self, prop, kwargs[prop])<br/>                        del kwargs[prop]<br/>                except (AttributeError, FieldDoesNotExist):<br/>                    pass<br/>            for kwarg in kwargs:<br/>&gt;               raise TypeError(&quot;%s() got an unexpected keyword argument &#x27;%s&#x27;&quot; % (cls.__name__, kwarg))<br/><span class="error">E               TypeError: User() got an unexpected keyword argument &#x27;password1&#x27;</span><br/><br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/base.py:500: TypeError<br/></div></td></tr></tbody>
+      <tbody class="error results-table-row">
+        <tr>
+          <td class="col-result">Error</td>
+          <td class="col-name">users/tests/test_models.py::UserModelTest::test_username::setup</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">cls = &lt;class &#x27;users.tests.test_models.UserModelTest&#x27;&gt;<br/><br/>    @classmethod<br/>    def setUpTestData(cls):<br/>        # Set up non-modified objects used by all test methods<br/>&gt;       User.objects.create(<br/>            username=&#x27;dummy_user_name&#x27;,<br/>            email=&#x27;Dummy@email.com&#x27;,<br/>            password1=&#x27;dummy_pwd_1&#x27;,<br/>            password2=&#x27;dummy_pwd_1&#x27;,<br/>        )<br/><br/>users/tests/test_models.py:10: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/manager.py:82: in manager_method<br/>    return getattr(self.get_queryset(), name)(*args, **kwargs)<br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/query.py:431: in create<br/>    obj = self.model(**kwargs)<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/><br/>self = &lt;User: dummy_user_name&gt;, args = (), kwargs = {&#x27;password1&#x27;: &#x27;dummy_pwd_1&#x27;, &#x27;password2&#x27;: &#x27;dummy_pwd_1&#x27;}, cls = &lt;class &#x27;django.contrib.auth.models.User&#x27;&gt;, opts = &lt;Options for User&gt;<br/>_setattr = &lt;built-in function setattr&gt;, _DEFERRED = &lt;Deferred field&gt;, fields_iter = &lt;tuple_iterator object at 0x7f7d55253be0&gt;<br/>val = datetime.datetime(2020, 8, 4, 21, 0, 5, 718295, tzinfo=&lt;UTC&gt;), field = &lt;django.db.models.fields.DateTimeField: date_joined&gt;, is_related_object = False<br/>property_names = frozenset({&#x27;is_anonymous&#x27;, &#x27;is_authenticated&#x27;, &#x27;pk&#x27;})<br/><br/>    def __init__(self, *args, **kwargs):<br/>        # Alias some things as locals to avoid repeat global lookups<br/>        cls = self.__class__<br/>        opts = self._meta<br/>        _setattr = setattr<br/>        _DEFERRED = DEFERRED<br/>    <br/>        pre_init.send(sender=cls, args=args, kwargs=kwargs)<br/>    <br/>        # Set up the storage for instance state<br/>        self._state = ModelState()<br/>    <br/>        # There is a rather weird disparity here; if kwargs, it&#x27;s set, then args<br/>        # overrides it. It should be one or the other; don&#x27;t duplicate the work<br/>        # The reason for the kwargs check is that standard iterator passes in by<br/>        # args, and instantiation for iteration is 33% faster.<br/>        if len(args) &gt; len(opts.concrete_fields):<br/>            # Daft, but matches old exception sans the err msg.<br/>            raise IndexError(&quot;Number of args exceeds number of fields&quot;)<br/>    <br/>        if not kwargs:<br/>            fields_iter = iter(opts.concrete_fields)<br/>            # The ordering of the zip calls matter - zip throws StopIteration<br/>            # when an iter throws it. So if the first iter throws it, the second<br/>            # is *not* consumed. We rely on this, so don&#x27;t change the order<br/>            # without changing the logic.<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>        else:<br/>            # Slower, kwargs-ready version.<br/>            fields_iter = iter(opts.fields)<br/>            for val, field in zip(args, fields_iter):<br/>                if val is _DEFERRED:<br/>                    continue<br/>                _setattr(self, field.attname, val)<br/>                kwargs.pop(field.name, None)<br/>    <br/>        # Now we&#x27;re left with the unprocessed fields that *must* come from<br/>        # keywords, or default.<br/>    <br/>        for field in fields_iter:<br/>            is_related_object = False<br/>            # Virtual field<br/>            if field.attname not in kwargs and field.column is None:<br/>                continue<br/>            if kwargs:<br/>                if isinstance(field.remote_field, ForeignObjectRel):<br/>                    try:<br/>                        # Assume object instance was passed in.<br/>                        rel_obj = kwargs.pop(field.name)<br/>                        is_related_object = True<br/>                    except KeyError:<br/>                        try:<br/>                            # Object instance wasn&#x27;t passed in -- must be an ID.<br/>                            val = kwargs.pop(field.attname)<br/>                        except KeyError:<br/>                            val = field.get_default()<br/>                else:<br/>                    try:<br/>                        val = kwargs.pop(field.attname)<br/>                    except KeyError:<br/>                        # This is done with an exception rather than the<br/>                        # default argument on pop because we don&#x27;t want<br/>                        # get_default() to be evaluated, and then not used.<br/>                        # Refs #12057.<br/>                        val = field.get_default()<br/>            else:<br/>                val = field.get_default()<br/>    <br/>            if is_related_object:<br/>                # If we are passed a related instance, set it using the<br/>                # field.name instead of field.attname (e.g. &quot;user&quot; instead of<br/>                # &quot;user_id&quot;) so that the object gets properly cached (and type<br/>                # checked) by the RelatedObjectDescriptor.<br/>                if rel_obj is not _DEFERRED:<br/>                    _setattr(self, field.name, rel_obj)<br/>            else:<br/>                if val is not _DEFERRED:<br/>                    _setattr(self, field.attname, val)<br/>    <br/>        if kwargs:<br/>            property_names = opts._property_names<br/>            for prop in tuple(kwargs):<br/>                try:<br/>                    # Any remaining kwargs must correspond to properties or<br/>                    # virtual fields.<br/>                    if prop in property_names or opts.get_field(prop):<br/>                        if kwargs[prop] is not _DEFERRED:<br/>                            _setattr(self, prop, kwargs[prop])<br/>                        del kwargs[prop]<br/>                except (AttributeError, FieldDoesNotExist):<br/>                    pass<br/>            for kwarg in kwargs:<br/>&gt;               raise TypeError(&quot;%s() got an unexpected keyword argument &#x27;%s&#x27;&quot; % (cls.__name__, kwarg))<br/><span class="error">E               TypeError: User() got an unexpected keyword argument &#x27;password1&#x27;</span><br/><br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/db/models/base.py:500: TypeError<br/></div></td></tr></tbody>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">catlog/tests/test_urls.py::TestUrls::test_detail_url_is_resolved</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">self = &lt;catlog.tests.test_urls.TestUrls testMethod=test_detail_url_is_resolved&gt;<br/><br/>    def test_detail_url_is_resolved(self):<br/>&gt;       url = reverse(&#x27;catlog:detail&#x27;)<br/><br/>catlog/tests/test_urls.py:23: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/urls/base.py:87: in reverse<br/>    return iri_to_uri(resolver._reverse_with_prefix(view, prefix, *args, **kwargs))<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/><br/>self = &lt;URLResolver &lt;URLResolver list&gt; (None:None) &#x27;^/&#x27;&gt;, lookup_view = &#x27;detail&#x27;, _prefix = &#x27;/&#x27;, args = (), kwargs = {}<br/>possibilities = [([(&#x27;catalogue/%(product_id)s/&#x27;, [&#x27;product_id&#x27;])], &#x27;catalogue/(?P&lt;product_id&gt;[0-9]+)/$&#x27;, {}, {&#x27;product_id&#x27;: &lt;django.urls.converters.IntConverter object at 0x7f7d5785c160&gt;})]<br/>possibility = [(&#x27;catalogue/%(product_id)s/&#x27;, [&#x27;product_id&#x27;])], pattern = &#x27;catalogue/(?P&lt;product_id&gt;[0-9]+)/$&#x27;, defaults = {}<br/>converters = {&#x27;product_id&#x27;: &lt;django.urls.converters.IntConverter object at 0x7f7d5785c160&gt;}, result = &#x27;catalogue/%(product_id)s/&#x27;, params = [&#x27;product_id&#x27;]<br/><br/>    def _reverse_with_prefix(self, lookup_view, _prefix, *args, **kwargs):<br/>        if args and kwargs:<br/>            raise ValueError(&quot;Don&#x27;t mix *args and **kwargs in call to reverse()!&quot;)<br/>    <br/>        if not self._populated:<br/>            self._populate()<br/>    <br/>        possibilities = self.reverse_dict.getlist(lookup_view)<br/>    <br/>        for possibility, pattern, defaults, converters in possibilities:<br/>            for result, params in possibility:<br/>                if args:<br/>                    if len(args) != len(params):<br/>                        continue<br/>                    candidate_subs = dict(zip(params, args))<br/>                else:<br/>                    if set(kwargs).symmetric_difference(params).difference(defaults):<br/>                        continue<br/>                    if any(kwargs.get(k, v) != v for k, v in defaults.items()):<br/>                        continue<br/>                    candidate_subs = kwargs<br/>                # Convert the candidate subs to text using Converter.to_url().<br/>                text_candidate_subs = {}<br/>                for k, v in candidate_subs.items():<br/>                    if k in converters:<br/>                        text_candidate_subs[k] = converters[k].to_url(v)<br/>                    else:<br/>                        text_candidate_subs[k] = str(v)<br/>                # WSGI provides decoded URLs, without %xx escapes, and the URL<br/>                # resolver operates on such URLs. First substitute arguments<br/>                # without quoting to build a decoded URL and look for a match.<br/>                # Then, if we have a match, redo the substitution with quoted<br/>                # arguments in order to return a properly encoded URL.<br/>                candidate_pat = _prefix.replace(&#x27;%&#x27;, &#x27;%%&#x27;) + result<br/>                if re.search(&#x27;^%s%s&#x27; % (re.escape(_prefix), pattern), candidate_pat % text_candidate_subs):<br/>                    # safe characters from `pchar` definition of RFC 3986<br/>                    url = quote(candidate_pat % text_candidate_subs, safe=RFC3986_SUBDELIMS + &#x27;/~:@&#x27;)<br/>                    # Don&#x27;t allow construction of scheme relative urls.<br/>                    return escape_leading_slashes(url)<br/>        # lookup_view can be URL name or callable, but callables are not<br/>        # friendly in error messages.<br/>        m = getattr(lookup_view, &#x27;__module__&#x27;, None)<br/>        n = getattr(lookup_view, &#x27;__name__&#x27;, None)<br/>        if m is not None and n is not None:<br/>            lookup_view_s = &quot;%s.%s&quot; % (m, n)<br/>        else:<br/>            lookup_view_s = lookup_view<br/>    <br/>        patterns = [pattern for (_, pattern, _, _) in possibilities]<br/>        if patterns:<br/>            if args:<br/>                arg_msg = &quot;arguments &#x27;%s&#x27;&quot; % (args,)<br/>            elif kwargs:<br/>                arg_msg = &quot;keyword arguments &#x27;%s&#x27;&quot; % (kwargs,)<br/>            else:<br/>                arg_msg = &quot;no arguments&quot;<br/>            msg = (<br/>                &quot;Reverse for &#x27;%s&#x27; with %s not found. %d pattern(s) tried: %s&quot; %<br/>                (lookup_view_s, arg_msg, len(patterns), patterns)<br/>            )<br/>        else:<br/>            msg = (<br/>                &quot;Reverse for &#x27;%(view)s&#x27; not found. &#x27;%(view)s&#x27; is not &quot;<br/>                &quot;a valid view function or pattern name.&quot; % {&#x27;view&#x27;: lookup_view_s}<br/>            )<br/>&gt;       raise NoReverseMatch(msg)<br/><span class="error">E       django.urls.exceptions.NoReverseMatch: Reverse for &#x27;detail&#x27; with no arguments not found. 1 pattern(s) tried: [&#x27;catalogue/(?P&lt;product_id&gt;[0-9]+)/$&#x27;]</span><br/><br/>/home/cyril/.local/share/virtualenvs/Peight-hsn5Z2yJ/lib/python3.8/site-packages/django/urls/resolvers.py:677: NoReverseMatch<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_active</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_code</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_grade</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_ingredients</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_ingredients_fr</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_name</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_object_name_is_name</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_qty</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_url</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::ProductModelTest::test_url_images</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::CategoryModelTest::test_active</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::CategoryModelTest::test_code</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::CategoryModelTest::test_name</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::CategoryModelTest::test_object_name_is_name</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::CategoryModelTest::test_url</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::BrandModelTest::test_active</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::BrandModelTest::test_code</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::BrandModelTest::test_name</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::BrandModelTest::test_object_name_is_name</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_models.py::BrandModelTest::test_url</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_views.py::SearchTest::test_root_url_resolves_to_search_view</td>
+          <td class="col-duration">0.03</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">pages/tests/test_views.py::TestViews::test_homepage_status</td>
+          <td class="col-duration">0.20</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">pages/tests/test_views.py::TestViews::test_homepage_template</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">pages/tests/test_views.py::TestViews::test_mentions_status</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">pages/tests/test_views.py::TestViews::test_mentions_template</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">users/tests/test_views.py::TestViewsLogin::test_login_status</td>
+          <td class="col-duration">0.05</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">users/tests/test_views.py::TestViewsLogin::test_login_template</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">users/tests/test_views.py::TestViewsRegister::test_register_status</td>
+          <td class="col-duration">0.02</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">users/tests/test_views.py::TestViewsRegister::test_register_template</td>
+          <td class="col-duration">0.02</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">users/tests/test_views.py::TestViewsLogOut::test_logout_status</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">users/tests/test_views.py::TestViewsLogOut::test_register_template</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_pages.py::TestHomePage::test_redirection_to_login</td>
+          <td class="col-duration">16.24</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_pages.py::TestHomePage::test_redirection_to_mentions</td>
+          <td class="col-duration">16.34</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_pages.py::TestHomePage::test_verify_elements_in_home</td>
+          <td class="col-duration">11.36</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_users.py::TestRegisterPage::test_invalid_registration_missing_email</td>
+          <td class="col-duration">15.34</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_users.py::TestRegisterPage::test_invalid_registration_missing_login</td>
+          <td class="col-duration">16.10</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_users.py::TestRegisterPage::test_invalid_registration_missing_pwd1</td>
+          <td class="col-duration">16.18</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_users.py::TestRegisterPage::test_valid_registration</td>
+          <td class="col-duration">16.60</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_users.py::TestLoginPage::test_valid_login</td>
+          <td class="col-duration">24.02</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests_funct/test_funct_users.py::TestUserInformationPage::test_valid_user_products</td>
+          <td class="col-duration">29.28</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">catlog/tests/test_urls.py::TestUrls::test_search_url_is_resolved</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">pages/tests/test_urls.py::TestUrls::test_homepage_url_is_resolved</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">pages/tests/test_urls.py::TestUrls::test_mentions_url_is_resolved</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody></table></body></html>
